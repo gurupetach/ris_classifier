@@ -57,7 +57,11 @@ defmodule IrisClassifier.MixProject do
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      {:nx, "~> 0.9.2"},
+      {:axon, "~> 0.7"},          # Machine learning library
+      {:exla, "~> 0.9.2"},          # EXLA backend for Axon (GPU/CPU acceleration)
+      {:explorer, "~> 0.10.1"},      # Dataframe library for loading and preprocessing data
     ]
   end
 
