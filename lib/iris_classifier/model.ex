@@ -51,17 +51,40 @@ defmodule IrisClassifier.Model do
       |> Nx.new_axis(-1)  # Add back the axis at the end
       |> Nx.equal(Nx.tensor([0, 1, 2]))  # Create one-hot encoding
 
-    # Evaluate the model
-    metrics =
-      model
-      |> Axon.Loop.evaluator()
-      |> Axon.Loop.metric(:accuracy)
-      |> Axon.Loop.run(test_features, test_labels_onehot, trained_model_state)
+    # Create a single batch of test data
+    test_data = {test_features, test_labels_onehot}
 
-    metrics
+    # Evaluate the model
+    model
+    |> Axon.Loop.evaluator()
+    |> Axon.Loop.metric(:accuracy)
+    |> Axon.Loop.run(
+      Stream.repeatedly(fn -> test_data end),
+      trained_model_state,
+      iterations: 1  # Just one iteration for the whole test set
+    )
   end
 
   def predict(model, trained_model_state, features) do
     Axon.predict(model, trained_model_state, features)
+  end
+
+  def print_predictions(predictions, actual_labels, num_samples \\ 10) do
+    predicted_classes =
+      predictions
+      |> Nx.argmax(axis: 1)
+      |> Nx.to_flat_list()
+
+    actual_classes =
+      actual_labels
+      |> Nx.squeeze()
+      |> Nx.to_flat_list()
+
+    IO.puts("\nSample predictions:")
+    Enum.zip(predicted_classes, actual_classes)
+    |> Enum.take(num_samples)
+    |> Enum.each(fn {pred, actual} ->
+      IO.puts("Predicted: #{pred}, Actual: #{actual}")
+    end)
   end
 end
