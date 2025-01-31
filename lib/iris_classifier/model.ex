@@ -22,9 +22,12 @@ defmodule IrisClassifier.Model do
     # Convert labels to one-hot encoding - fixed version
     train_labels_onehot =
       train_labels
-      |> Nx.squeeze()  # Remove extra dimension
-      |> Nx.new_axis(-1)  # Add back the axis at the end
-      |> Nx.equal(Nx.tensor([0, 1, 2]))  # Create one-hot encoding
+      # Remove extra dimension
+      |> Nx.squeeze()
+      # Add back the axis at the end
+      |> Nx.new_axis(-1)
+      # Create one-hot encoding
+      |> Nx.equal(Nx.tensor([0, 1, 2]))
 
     IO.inspect(Nx.shape(train_labels_onehot), label: "One-hot encoded labels shape")
 
@@ -43,13 +46,20 @@ defmodule IrisClassifier.Model do
     )
   end
 
-  def evaluate(model, trained_model_state, {_train_features, _train_labels, test_features, test_labels}) do
+  def evaluate(
+        model,
+        trained_model_state,
+        {_train_features, _train_labels, test_features, test_labels}
+      ) do
     # Convert test labels to one-hot encoding - fixed version
     test_labels_onehot =
       test_labels
-      |> Nx.squeeze()  # Remove extra dimension
-      |> Nx.new_axis(-1)  # Add back the axis at the end
-      |> Nx.equal(Nx.tensor([0, 1, 2]))  # Create one-hot encoding
+      # Remove extra dimension
+      |> Nx.squeeze()
+      # Add back the axis at the end
+      |> Nx.new_axis(-1)
+      # Create one-hot encoding
+      |> Nx.equal(Nx.tensor([0, 1, 2]))
 
     # Create a single batch of test data
     test_data = {test_features, test_labels_onehot}
@@ -61,7 +71,8 @@ defmodule IrisClassifier.Model do
     |> Axon.Loop.run(
       Stream.repeatedly(fn -> test_data end),
       trained_model_state,
-      iterations: 1  # Just one iteration for the whole test set
+      # Just one iteration for the whole test set
+      iterations: 1
     )
   end
 
@@ -80,11 +91,31 @@ defmodule IrisClassifier.Model do
       |> Nx.squeeze()
       |> Nx.to_flat_list()
 
-    IO.puts("\nSample predictions:")
-    Enum.zip(predicted_classes, actual_classes)
+    # Get probabilities for each class
+    probabilities =
+      Nx.to_flat_list(predictions)
+      |> Enum.chunk_every(3)
+
+    IO.puts("\nDetailed predictions:")
+
+    Enum.zip([predicted_classes, actual_classes, probabilities])
     |> Enum.take(num_samples)
-    |> Enum.each(fn {pred, actual} ->
-      IO.puts("Predicted: #{pred}, Actual: #{actual}")
+    |> Enum.each(fn {pred, actual, probs} ->
+      {setosa, versicolor, virginica} = List.to_tuple(probs)
+      pred_name = class_to_name(pred)
+      actual_name = class_to_name(actual)
+
+      IO.puts("""
+      Predicted: #{pred_name} (#{pred}), Actual: #{actual_name} (#{actual})
+      Probabilities:
+        Setosa: #{Float.round(setosa * 100, 2)}%
+        Versicolor: #{Float.round(versicolor * 100, 2)}%
+        Virginica: #{Float.round(virginica * 100, 2)}%
+      """)
     end)
   end
+
+  defp class_to_name(0), do: "Iris-setosa"
+  defp class_to_name(1), do: "Iris-versicolor"
+  defp class_to_name(2), do: "Iris-virginica"
 end

@@ -48,13 +48,14 @@ defmodule IrisClassifier.Dataset do
     IO.inspect(features, label: "Features tensor shape")
 
     # Extract and encode labels, matching the number of valid features
-    labels = df
-    |> DataFrame.pull("species")
-    |> Series.to_list()
-    |> Enum.take(length(feature_vectors))
-    |> Enum.map(&species_to_label/1)
-    |> Nx.tensor()
-    |> Nx.new_axis(-1)
+    labels =
+      df
+      |> DataFrame.pull("species")
+      |> Series.to_list()
+      |> Enum.take(length(feature_vectors))
+      |> Enum.map(&species_to_label/1)
+      |> Nx.tensor()
+      |> Nx.new_axis(-1)
 
     IO.inspect(labels, label: "Labels tensor shape")
 
