@@ -119,7 +119,6 @@ defmodule IrisClassifier.Model do
   defp class_to_name(1), do: "Iris-versicolor"
   defp class_to_name(2), do: "Iris-virginica"
 
-
   def save_model_state(model_state, file_path) do
     binary = :erlang.term_to_binary(model_state)
     File.write!(file_path, binary)
