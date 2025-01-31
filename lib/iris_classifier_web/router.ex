@@ -17,7 +17,8 @@ defmodule IrisClassifierWeb.Router do
   scope "/", IrisClassifierWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    # Route for the LiveView
+    live "/", ClassifierLive
   end
 
   # Other scopes may use custom stacks.
