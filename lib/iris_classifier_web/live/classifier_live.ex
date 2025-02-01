@@ -103,12 +103,23 @@ defmodule IrisClassifierWeb.ClassifierLive do
           [String.to_float(sl), String.to_float(sw), String.to_float(pl), String.to_float(pw)]
         ])
 
+      # Normalize input using the same parameters as training data
+      # These values should match your training normalization
+      means = Nx.tensor([5.843333, 3.057333, 3.758000, 1.199333])
+      stds = Nx.tensor([0.828066, 0.435866, 1.765298, 0.762238])
+
+      input = Nx.divide(Nx.subtract(input, means), stds)
+
       # Make prediction
       model = Model.build_model()
       prediction = Model.predict(model, socket.assigns.model_state, input)
 
+      # Debug logging
+      IO.inspect(prediction, label: "Raw prediction tensor")
+      IO.inspect(Nx.to_flat_list(prediction), label: "Prediction probabilities")
+
       # Get probabilities for each class
-      [probabilities] = Nx.to_flat_list(prediction)
+      probabilities = prediction |> Nx.to_flat_list()
 
       # Get predicted class
       predicted_class =
@@ -117,13 +128,16 @@ defmodule IrisClassifierWeb.ClassifierLive do
         |> Nx.to_flat_list()
         |> List.first()
 
+      # Extract individual probabilities
+      [setosa_prob, versicolor_prob, virginica_prob] = probabilities
+
       # Create detailed prediction result
       result = %{
         class: class_name(predicted_class),
         probabilities: %{
-          "Iris-setosa" => Enum.at(probabilities, 0),
-          "Iris-versicolor" => Enum.at(probabilities, 1),
-          "Iris-virginica" => Enum.at(probabilities, 2)
+          "Iris-setosa" => setosa_prob,
+          "Iris-versicolor" => versicolor_prob,
+          "Iris-virginica" => virginica_prob
         }
       }
 
