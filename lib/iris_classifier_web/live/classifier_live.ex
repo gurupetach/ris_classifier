@@ -185,9 +185,9 @@ defmodule IrisClassifierWeb.ClassifierLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="mx-auto max-w-4xl p-6">
+    <div class="mx-auto  p-6">
       <h1 class="text-3xl font-bold mb-6">Iris Flower Classification</h1>
-      
+
     <!-- Model Status Banner -->
       <%= if @model_state do %>
         <div class="mb-4 p-3 bg-green-100 text-green-700 rounded flex items-center justify-between">
@@ -204,7 +204,7 @@ defmodule IrisClassifierWeb.ClassifierLive do
           No trained model found. Please train a new model to make predictions.
         </div>
       <% end %>
-      
+
     <!-- Training Section -->
       <div class="mb-8 p-6 bg-gray-50 rounded-lg">
         <h2 class="text-xl font-semibold mb-4">Model Training</h2>
@@ -240,7 +240,7 @@ defmodule IrisClassifierWeb.ClassifierLive do
           </div>
         <% end %>
       </div>
-      
+
     <!-- Prediction Form -->
       <div class="mb-8 p-6 bg-gray-50 rounded-lg">
         <h2 class="text-xl font-semibold mb-4">Make Predictions</h2>
@@ -305,7 +305,7 @@ defmodule IrisClassifierWeb.ClassifierLive do
           </button>
         </form>
       </div>
-      
+
     <!-- Prediction Results -->
       <%= if @prediction do %>
         <div class="p-6 bg-gray-50 rounded-lg">
