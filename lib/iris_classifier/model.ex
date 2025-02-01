@@ -19,17 +19,12 @@ defmodule IrisClassifier.Model do
   end
 
   def train(model, {train_features, train_labels, test_features, test_labels}) do
-    # Convert labels to one-hot encoding - fixed version
+    # Convert labels to one-hot encoding
     train_labels_onehot =
       train_labels
-      # Remove extra dimension
       |> Nx.squeeze()
-      # Add back the axis at the end
       |> Nx.new_axis(-1)
-      # Create one-hot encoding
       |> Nx.equal(Nx.tensor([0, 1, 2]))
-
-    IO.inspect(Nx.shape(train_labels_onehot), label: "One-hot encoded labels shape")
 
     # Configure training parameters
     optimizer = Polaris.Optimizers.adam(learning_rate: 0.001)
