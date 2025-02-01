@@ -138,8 +138,14 @@ Input [4] → Dense [64] → ReLU → Dropout(0.2) → Dense [32] → ReLU → D
     <%= if length(@epochs_history) > 0 do %>
       <div class="mt-4">
         <h3 class="font-semibold mb-2">Training Progress</h3>
-        <div class="bg-white p-4 rounded border">
-          <canvas id="training-chart" phx-hook="TrainingChart" phx-update="ignore"></canvas>
+        <div class="bg-white p-4 rounded border" style="height: 400px;">
+          <canvas
+            id="training-chart"
+            phx-hook="TrainingChart"
+            phx-update="ignore"
+            class="w-full h-full"
+          >
+          </canvas>
         </div>
         
 <!-- Current Epoch Metrics -->

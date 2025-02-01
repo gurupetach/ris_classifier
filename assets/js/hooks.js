@@ -5,6 +5,7 @@ let Hooks = {}
 
 Hooks.TrainingChart = {
   mounted() {
+    console.log("TrainingChart hook mounted");
     // Initialize the chart
     this.chart = new Chart(this.el, {
       type: 'line',

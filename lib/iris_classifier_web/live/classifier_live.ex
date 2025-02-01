@@ -180,8 +180,9 @@ defmodule IrisClassifierWeb.ClassifierLive do
       |> assign(:current_epoch, epoch)
       |> assign(:epochs_history, [epoch_data | socket.assigns.epochs_history])
 
-    # Broadcast the updated metrics to the chart
-    send_update(socket.assigns.myself, metrics: epoch_data)
+    push_event(socket, "metrics-updated", %{
+      epochs_history: [epoch_data | socket.assigns.epochs_history]
+    })
 
     {:noreply, socket}
   end
