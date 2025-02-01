@@ -12,7 +12,6 @@ defmodule IrisClassifierWeb.ClassifierLive do
     initial_model_state = load_existing_model_state()
     initial_status = if initial_model_state, do: "Model loaded from saved state", else: nil
 
-    # Initialize with default values and potentially loaded model state
     socket =
       socket
       |> assign(:sepal_length, 5.1)
@@ -25,8 +24,13 @@ defmodule IrisClassifierWeb.ClassifierLive do
       |> assign(:training_metrics, [])
       |> assign(:evaluation_metrics, nil)
       |> assign(:error_message, nil)
+      |> assign(:current_epoch, 0)
+      |> assign(:epochs_history, [])
+      |> assign(:show_architecture, false)
+      |> assign(:show_training_log, false)
+      |> assign(:training_logs, [])
 
-    {:ok, socket}
+    {:ok, socket, temporary_assigns: [epochs_history: [], training_logs: []]}
   end
 
   # Helper function to safely load existing model state
@@ -51,23 +55,25 @@ defmodule IrisClassifierWeb.ClassifierLive do
       try do
         # Load dataset
         send(pid, {:status, "Loading dataset..."})
+        send(pid, {:training_log, "Starting dataset load..."})
         {train_features, train_labels, test_features, test_labels} = Dataset.load_iris()
+        send(pid, {:training_log, "Dataset loaded successfully"})
 
         # Build and train model
         send(pid, {:status, "Training model..."})
+        send(pid, {:training_log, "Initializing model architecture..."})
         model = Model.build_model()
+        send(pid, {:training_log, "Model architecture created"})
 
-        # Create a function to capture training metrics
-        send_metrics = fn epoch, metrics ->
-          send(pid, {:training_metrics, epoch, metrics})
-        end
+        # Train the model
+        send(pid, {:training_log, "Beginning training process..."})
 
-        # Train the model with metrics callback
         trained_model_state =
           Model.train(model, {train_features, train_labels, test_features, test_labels})
 
         # Evaluate the model
         send(pid, {:status, "Evaluating model..."})
+        send(pid, {:training_log, "Evaluating model performance..."})
 
         metrics =
           Model.evaluate(
@@ -77,12 +83,15 @@ defmodule IrisClassifierWeb.ClassifierLive do
           )
 
         # Save the model
+        send(pid, {:training_log, "Saving trained model..."})
         Model.save_model_state(trained_model_state, @model_state_path)
+        send(pid, {:training_log, "Model saved successfully"})
 
         # Send completion message
         send(pid, {:training_complete, trained_model_state, metrics})
       rescue
         e ->
+          send(pid, {:training_log, "Error occurred: #{Exception.message(e)}"})
           send(pid, {:training_error, Exception.message(e)})
       end
     end)
@@ -104,7 +113,6 @@ defmodule IrisClassifierWeb.ClassifierLive do
         ])
 
       # Normalize input using the same parameters as training data
-      # These values should match your training normalization
       means = Nx.tensor([5.843333, 3.057333, 3.758000, 1.199333])
       stds = Nx.tensor([0.828066, 0.435866, 1.765298, 0.762238])
 
@@ -147,14 +155,43 @@ defmodule IrisClassifierWeb.ClassifierLive do
     end
   end
 
+  def handle_event("toggle_architecture", _, socket) do
+    {:noreply, assign(socket, :show_architecture, !socket.assigns.show_architecture)}
+  end
+
+  def handle_event("toggle_training_log", _, socket) do
+    {:noreply, assign(socket, :show_training_log, !socket.assigns.show_training_log)}
+  end
+
   @impl true
   def handle_info({:status, status}, socket) do
     {:noreply, assign(socket, :training_status, status)}
   end
 
   def handle_info({:training_metrics, epoch, metrics}, socket) do
-    updated_metrics = socket.assigns.training_metrics ++ [{epoch, metrics}]
-    {:noreply, assign(socket, :training_metrics, updated_metrics)}
+    epoch_data = %{
+      epoch: epoch,
+      accuracy: get_in(metrics, [0, "accuracy"]) |> Nx.to_number(),
+      loss: get_in(metrics, [0, "loss"]) |> Nx.to_number()
+    }
+
+    socket =
+      socket
+      |> assign(:current_epoch, epoch)
+      |> assign(:epochs_history, [epoch_data | socket.assigns.epochs_history])
+
+    # Broadcast the updated metrics to the chart
+    send_update(socket.assigns.myself, metrics: epoch_data)
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:training_log, message}, socket) do
+    timestamp = DateTime.utc_now() |> DateTime.to_string()
+    log_entry = "#{timestamp}: #{message}"
+
+    socket = update(socket, :training_logs, fn logs -> [log_entry | logs] end)
+    {:noreply, socket}
   end
 
   def handle_info({:training_complete, model_state, metrics}, socket) do
@@ -181,7 +218,4 @@ defmodule IrisClassifierWeb.ClassifierLive do
   defp class_name(1), do: "Iris-versicolor"
   defp class_name(2), do: "Iris-virginica"
   defp class_name(_), do: "Unknown"
-
-  @impl true
-  
 end

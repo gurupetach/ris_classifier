@@ -1,156 +1,267 @@
-<div>
-    <div class="mx-auto  p-6">
-      <h1 class="text-3xl font-bold mb-6">Iris Flower Classification</h1>
-
-    <!-- Model Status Banner -->
-      <%= if @model_state do %>
-        <div class="mb-4 p-3 bg-green-100 text-green-700 rounded flex items-center justify-between">
-          <span>Model is loaded and ready for predictions</span>
-          <button
-            phx-click="train_model"
-            class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-          >
-            Retrain Model
-          </button>
-        </div>
-      <% else %>
-        <div class="mb-4 p-3 bg-yellow-100 text-yellow-700 rounded">
-          No trained model found. Please train a new model to make predictions.
-        </div>
-      <% end %>
-
-    <!-- Training Section -->
-      <div class="mb-8 p-6 bg-gray-50 rounded-lg">
-        <h2 class="text-xl font-semibold mb-4">Model Training</h2>
-
-        <button
-          phx-click="train_model"
-          disabled={@training_status == "Training..."}
-          class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-        >
-          Train Model
-        </button>
-
-        <%= if @training_status do %>
-          <div class="mt-4">
-            <p class="font-semibold">Status: {@training_status}</p>
-          </div>
-        <% end %>
-
-        <%= if @error_message do %>
-          <div class="mt-4 p-4 bg-red-100 text-red-700 rounded">
-            {@error_message}
-          </div>
-        <% end %>
-
-        <%= if @evaluation_metrics do %>
-          <div class="mt-4">
-            <h3 class="font-semibold">Model Metrics:</h3>
-            <p>
-              Accuracy: {get_in(@evaluation_metrics, [0, "accuracy"])
-              |> Nx.to_number()
-              |> Float.round(4)}
-            </p>
-          </div>
-        <% end %>
-      </div>
-
-    <!-- Prediction Form -->
-      <div class="mb-8 p-6 bg-gray-50 rounded-lg">
-        <h2 class="text-xl font-semibold mb-4">Make Predictions</h2>
-
-        <form phx-submit="predict" class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium mb-1">Sepal Length:</label>
-              <input
-                type="number"
-                step="0.1"
-                name="sepal_length"
-                value={@sepal_length}
-                required
-                class="w-full p-2 border rounded"
-              />
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium mb-1">Sepal Width:</label>
-              <input
-                type="number"
-                step="0.1"
-                name="sepal_width"
-                value={@sepal_width}
-                required
-                class="w-full p-2 border rounded"
-              />
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium mb-1">Petal Length:</label>
-              <input
-                type="number"
-                step="0.1"
-                name="petal_length"
-                value={@petal_length}
-                required
-                class="w-full p-2 border rounded"
-              />
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium mb-1">Petal Width:</label>
-              <input
-                type="number"
-                step="0.1"
-                name="petal_width"
-                value={@petal_width}
-                required
-                class="w-full p-2 border rounded"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={is_nil(@model_state)}
-            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
-          >
-            Predict
-          </button>
-        </form>
-      </div>
-
-    <!-- Prediction Results -->
-      <%= if @prediction do %>
-        <div class="p-6 bg-gray-50 rounded-lg">
-          <h2 class="text-xl font-semibold mb-4">Prediction Results</h2>
-
-          <div class="mb-4">
-            <p class="text-lg">
-              Predicted Class: <span class="font-semibold">{@prediction.class}</span>
-            </p>
-          </div>
-
-          <div>
-            <h3 class="font-semibold mb-2">Class Probabilities:</h3>
-            <div class="space-y-2">
-              <%= for {class, probability} <- @prediction.probabilities do %>
-                <div class="flex items-center">
-                  <div class="w-32">{class}:</div>
-                  <div class="flex-1">
-                    <div class="bg-gray-200 h-4 rounded overflow-hidden">
-                      <div class="bg-blue-500 h-full" style={"width: #{probability * 100}%"} />
-                    </div>
-                  </div>
-                  <div class="ml-2 w-16 text-right">
-                    {Float.round(probability * 100, 1)}%
-                  </div>
-                </div>
-              <% end %>
-            </div>
-          </div>
-        </div>
-      <% end %>
-    </div>
-    </div>
+<div class="mx-auto p-6">
+  <h1 class="text-3xl font-bold mb-6">Iris Flower Classification</h1>
   
+<!-- Model Status Banner -->
+  <%= if @model_state do %>
+    <div class="mb-4 p-3 bg-green-100 text-green-700 rounded flex items-center justify-between">
+      <span>Model is loaded and ready for predictions</span>
+      <button
+        phx-click="train_model"
+        class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+      >
+        Retrain Model
+      </button>
+    </div>
+  <% else %>
+    <div class="mb-4 p-3 bg-yellow-100 text-yellow-700 rounded">
+      No trained model found. Please train a new model to make predictions.
+    </div>
+  <% end %>
+  
+<!-- Model Architecture Section -->
+  <div class="mb-8 p-6 bg-gray-50 rounded-lg">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-semibold">Model Architecture</h2>
+      <button
+        phx-click="toggle_architecture"
+        class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+      >
+        {if @show_architecture, do: "Hide Details", else: "Show Details"}
+      </button>
+    </div>
+
+    <%= if @show_architecture do %>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Input Layer -->
+        <div class="p-4 border rounded bg-white">
+          <h3 class="font-semibold mb-2">Input Layer</h3>
+          <ul class="text-sm list-disc list-inside space-y-1">
+            <li>4 input neurons</li>
+            <li>Sepal length</li>
+            <li>Sepal width</li>
+            <li>Petal length</li>
+            <li>Petal width</li>
+          </ul>
+        </div>
+        
+<!-- Hidden Layer 1 -->
+        <div class="p-4 border rounded bg-white">
+          <h3 class="font-semibold mb-2">Hidden Layer 1</h3>
+          <ul class="text-sm list-disc list-inside space-y-1">
+            <li>64 neurons</li>
+            <li>ReLU activation</li>
+            <li>20% dropout rate</li>
+            <li>256 trainable weights</li>
+            <li>64 bias parameters</li>
+          </ul>
+        </div>
+        
+<!-- Hidden Layer 2 -->
+        <div class="p-4 border rounded bg-white">
+          <h3 class="font-semibold mb-2">Hidden Layer 2</h3>
+          <ul class="text-sm list-disc list-inside space-y-1">
+            <li>32 neurons</li>
+            <li>ReLU activation</li>
+            <li>2048 trainable weights</li>
+            <li>32 bias parameters</li>
+          </ul>
+        </div>
+        
+<!-- Output Layer -->
+        <div class="p-4 border rounded bg-white col-span-full">
+          <h3 class="font-semibold mb-2">Output Layer</h3>
+          <ul class="text-sm list-disc list-inside space-y-1">
+            <li>3 neurons (one per class)</li>
+            <li>Softmax activation</li>
+            <li>96 trainable weights</li>
+            <li>3 bias parameters</li>
+            <li>Classes: Setosa, Versicolor, Virginica</li>
+          </ul>
+        </div>
+        
+<!-- Architecture Diagram -->
+        <div class="col-span-full mt-4">
+          <h3 class="font-semibold mb-2">Network Structure</h3>
+          <div class="bg-white p-4 rounded border overflow-x-auto">
+            <pre class="text-sm whitespace-pre">
+Input [4] → Dense [64] → ReLU → Dropout(0.2) → Dense [32] → ReLU → Dense [3] → Softmax
+            </pre>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  
+<!-- Training Section -->
+  <div class="mb-8 p-6 bg-gray-50 rounded-lg">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-semibold">Model Training</h2>
+      <button
+        phx-click="toggle_training_log"
+        class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+      >
+        {if @show_training_log, do: "Hide Log", else: "Show Log"}
+      </button>
+    </div>
+
+    <button
+      phx-click="train_model"
+      disabled={@training_status == "Training..."}
+      class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+    >
+      Train Model
+    </button>
+
+    <%= if @training_status do %>
+      <div class="mt-4">
+        <p class="font-semibold">Status: {@training_status}</p>
+      </div>
+    <% end %>
+
+    <%= if @error_message do %>
+      <div class="mt-4 p-4 bg-red-100 text-red-700 rounded">
+        {@error_message}
+      </div>
+    <% end %>
+
+    <%= if @show_training_log do %>
+      <div class="mt-4">
+        <h3 class="font-semibold mb-2">Training Log</h3>
+        <div class="bg-black text-green-400 p-4 rounded font-mono text-sm h-64 overflow-y-auto">
+          <%= for log <- @training_logs do %>
+            <div class="mb-1">{log}</div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%= if length(@epochs_history) > 0 do %>
+      <div class="mt-4">
+        <h3 class="font-semibold mb-2">Training Progress</h3>
+        <div class="bg-white p-4 rounded border">
+          <canvas id="training-chart" phx-hook="TrainingChart" phx-update="ignore"></canvas>
+        </div>
+        
+<!-- Current Epoch Metrics -->
+        <div class="mt-4 grid grid-cols-2 gap-4">
+          <div class="p-4 bg-white rounded border">
+            <h4 class="font-semibold mb-2">Current Epoch: {@current_epoch}</h4>
+            <p>Accuracy: {Float.round(Enum.at(@epochs_history, 0).accuracy * 100, 2)}%</p>
+            <p>Loss: {Float.round(Enum.at(@epochs_history, 0).loss, 4)}</p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%= if @evaluation_metrics do %>
+      <div class="mt-4">
+        <h3 class="font-semibold">Final Model Metrics:</h3>
+        <div class="mt-2 p-4 bg-white rounded border">
+          <p>
+            Accuracy: {get_in(@evaluation_metrics, [0, "accuracy"])
+            |> Nx.to_number()
+            |> Float.round(4)
+            |> Kernel.*(100)}%
+          </p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  
+<!-- Prediction Form -->
+  <div class="mb-8 p-6 bg-gray-50 rounded-lg">
+    <h2 class="text-xl font-semibold mb-4">Make Predictions</h2>
+
+    <form phx-submit="predict" class="space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Sepal Length:</label>
+          <input
+            type="number"
+            step="0.1"
+            name="sepal_length"
+            value={@sepal_length}
+            required
+            class="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">Sepal Width:</label>
+          <input
+            type="number"
+            step="0.1"
+            name="sepal_width"
+            value={@sepal_width}
+            required
+            class="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">Petal Length:</label>
+          <input
+            type="number"
+            step="0.1"
+            name="petal_length"
+            value={@petal_length}
+            required
+            class="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">Petal Width:</label>
+          <input
+            type="number"
+            step="0.1"
+            name="petal_width"
+            value={@petal_width}
+            required
+            class="w-full p-2 border rounded"
+          />
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        disabled={is_nil(@model_state)}
+        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
+      >
+        Predict
+      </button>
+    </form>
+  </div>
+  
+<!-- Prediction Results -->
+  <%= if @prediction do %>
+    <div class="p-6 bg-gray-50 rounded-lg">
+      <h2 class="text-xl font-semibold mb-4">Prediction Results</h2>
+
+      <div class="mb-4">
+        <p class="text-lg">
+          Predicted Class: <span class="font-semibold">{@prediction.class}</span>
+        </p>
+      </div>
+
+      <div>
+        <h3 class="font-semibold mb-2">Class Probabilities:</h3>
+        <div class="space-y-2">
+          <%= for {class, probability} <- @prediction.probabilities do %>
+            <div class="flex items-center">
+              <div class="w-32">{class}:</div>
+              <div class="flex-1">
+                <div class="bg-gray-200 h-4 rounded overflow-hidden">
+                  <div class="bg-blue-500 h-full" style={"width: #{probability * 100}%"} />
+                </div>
+              </div>
+              <div class="ml-2 w-16 text-right">
+                {Float.round(probability * 100, 1)}%
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
