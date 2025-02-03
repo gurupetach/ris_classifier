@@ -28,7 +28,16 @@ defmodule IrisClassifierWeb.ClassifierLive do
       |> assign(:epochs_history, [])
       |> assign(:show_architecture, false)
       |> assign(:show_training_log, false)
-      |> assign(:training_logs, [])
+      |> assign(:training_logs, [])  # Add this line to initialize training_logs
+      |> assign(:batch_metrics, [])  # Add this for batch metrics
+      |> assign(:layer_states, [])   # Add this for layer states
+      |> assign(:gradient_updates, []) # Add this for gradient updates
+      |> assign(:network_state, %{    # Add this for network state
+        input_layer: %{neurons: 4, activation: nil},
+        hidden_layer1: %{neurons: 64, activation: "ReLU"},
+        hidden_layer2: %{neurons: 32, activation: "ReLU"},
+        output_layer: %{neurons: 3, activation: "Softmax"}
+      })
 
     {:ok, socket, temporary_assigns: [epochs_history: [], training_logs: []]}
   end
@@ -54,13 +63,11 @@ defmodule IrisClassifierWeb.ClassifierLive do
     Task.start(fn ->
       try do
         # Load dataset
-        send(pid, {:status, "Loading dataset..."})
         send(pid, {:training_log, "Starting dataset load..."})
         {train_features, train_labels, test_features, test_labels} = Dataset.load_iris()
         send(pid, {:training_log, "Dataset loaded successfully"})
 
         # Build and train model
-        send(pid, {:status, "Training model..."})
         send(pid, {:training_log, "Initializing model architecture..."})
         model = Model.build_model()
         send(pid, {:training_log, "Model architecture created"})
@@ -68,19 +75,20 @@ defmodule IrisClassifierWeb.ClassifierLive do
         # Train the model
         send(pid, {:training_log, "Beginning training process..."})
 
-        trained_model_state =
-          Model.train(model, {train_features, train_labels, test_features, test_labels})
+        trained_model_state = Model.train(
+          model,
+          {train_features, train_labels, test_features, test_labels},
+          pid
+        )
 
         # Evaluate the model
-        send(pid, {:status, "Evaluating model..."})
-        send(pid, {:training_log, "Evaluating model performance..."})
+        send(pid, {:training_log, "Evaluating model..."})
 
-        metrics =
-          Model.evaluate(
-            model,
-            trained_model_state,
-            {train_features, train_labels, test_features, test_labels}
-          )
+        metrics = Model.evaluate(
+          model,
+          trained_model_state,
+          {train_features, train_labels, test_features, test_labels}
+        )
 
         # Save the model
         send(pid, {:training_log, "Saving trained model..."})
@@ -97,6 +105,55 @@ defmodule IrisClassifierWeb.ClassifierLive do
     end)
 
     {:noreply, assign(socket, :training_status, "Starting training...")}
+  end
+
+  # Make sure you have all these handle_info callbacks:
+  @impl true
+  def handle_info({:training_log, message}, socket) do
+    timestamp = DateTime.utc_now() |> to_string()
+    log_entry = "#{timestamp}: #{message}"
+    {:noreply, update(socket, :training_logs, fn logs -> [log_entry | logs] end)}
+  end
+
+  @impl true
+  def handle_info({:training_metrics, epoch, metrics}, socket) do
+    epoch_data = %{
+      epoch: epoch,
+      accuracy: metrics.accuracy,
+      loss: metrics.loss
+    }
+
+    socket =
+      socket
+      |> assign(:current_epoch, epoch)
+      |> update(:epochs_history, fn history -> [epoch_data | history] end)
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:training_complete, model_state, metrics}, socket) do
+    socket =
+      socket
+      |> assign(:model_state, model_state)
+      |> assign(:evaluation_metrics, metrics)
+      |> assign(:training_status, "Training complete!")
+      |> assign(:error_message, nil)
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:training_error, error_message}, socket) do
+    {:noreply,
+      socket
+      |> assign(:training_status, "Training failed")
+      |> assign(:error_message, error_message)}
+  end
+
+  @impl true
+  def handle_info({:status, status}, socket) do
+    {:noreply, assign(socket, :training_status, status)}
   end
 
   @impl true
@@ -163,56 +220,21 @@ defmodule IrisClassifierWeb.ClassifierLive do
     {:noreply, assign(socket, :show_training_log, !socket.assigns.show_training_log)}
   end
 
-  @impl true
-  def handle_info({:status, status}, socket) do
-    {:noreply, assign(socket, :training_status, status)}
+
+
+
+
+
+  def handle_info({:layer_update, layer, state}, socket) do
+    {:noreply, update(socket, :layer_states, fn states ->
+      [{layer, state, DateTime.utc_now()} | states]
+    end)}
   end
 
-  def handle_info({:training_metrics, epoch, metrics}, socket) do
-    epoch_data = %{
-      epoch: epoch,
-      accuracy: get_in(metrics, [0, "accuracy"]) |> Nx.to_number(),
-      loss: get_in(metrics, [0, "loss"]) |> Nx.to_number()
-    }
-
-    socket =
-      socket
-      |> assign(:current_epoch, epoch)
-      |> assign(:epochs_history, [epoch_data | socket.assigns.epochs_history])
-
-    push_event(socket, "metrics-updated", %{
-      epochs_history: [epoch_data | socket.assigns.epochs_history]
-    })
-
-    {:noreply, socket}
-  end
-
-  def handle_info({:training_log, message}, socket) do
-    timestamp = DateTime.utc_now() |> DateTime.to_string()
-    log_entry = "#{timestamp}: #{message}"
-
-    socket = update(socket, :training_logs, fn logs -> [log_entry | logs] end)
-    {:noreply, socket}
-  end
-
-  def handle_info({:training_complete, model_state, metrics}, socket) do
-    socket =
-      socket
-      |> assign(:model_state, model_state)
-      |> assign(:evaluation_metrics, metrics)
-      |> assign(:training_status, "Training complete!")
-      |> assign(:error_message, nil)
-
-    {:noreply, socket}
-  end
-
-  def handle_info({:training_error, error_message}, socket) do
-    socket =
-      socket
-      |> assign(:training_status, "Training failed")
-      |> assign(:error_message, error_message)
-
-    {:noreply, socket}
+  def handle_info({:batch_metrics, metrics}, socket) do
+    {:noreply, update(socket, :batch_metrics, fn existing ->
+      [metrics | existing] |> Enum.take(100)
+    end)}
   end
 
   defp class_name(0), do: "Iris-setosa"

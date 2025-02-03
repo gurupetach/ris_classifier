@@ -18,7 +18,7 @@ defmodule IrisClassifier.Model do
     model
   end
 
-  def train(model, {train_features, train_labels, test_features, test_labels}) do
+  def train(model, {train_features, train_labels, test_features, test_labels}, pid) do
     # Convert labels to one-hot encoding
     train_labels_onehot =
       train_labels
@@ -33,13 +33,43 @@ defmodule IrisClassifier.Model do
     model
     |> Axon.Loop.trainer(:categorical_cross_entropy, optimizer)
     |> Axon.Loop.metric(:accuracy)
+    |> Axon.Loop.handle(
+      :epoch_completed,
+      fn state, _epoch ->
+        accuracy = get_in(state.metrics, [0, "accuracy"]) |> Nx.to_number()
+        loss = get_in(state.metrics, [0, "loss"]) |> Nx.to_number()
+
+        send(pid, {:training_log, "Epoch #{state.epoch} - Accuracy: #{Float.round(accuracy * 100, 2)}% Loss: #{Float.round(loss, 4)}"})
+        send(pid, {:training_metrics, state.epoch, %{
+          accuracy: accuracy,
+          loss: loss
+        }})
+        {:continue, state}
+      end
+    )
+    |> Axon.Loop.handle(
+      :batch_completed,
+      fn state, _batch ->
+        if rem(state.step, 10) == 0 do  # Only send every 10th batch to avoid overwhelming
+          accuracy = get_in(state.metrics, [0, "accuracy"]) |> Nx.to_number()
+          loss = get_in(state.metrics, [0, "loss"]) |> Nx.to_number()
+
+          send(pid, {:batch_metrics, %{
+            batch: state.step,
+            accuracy: accuracy,
+            loss: loss
+          }})
+        end
+        {:continue, state}
+      end
+    )
     |> Axon.Loop.run(
       Stream.repeatedly(fn -> {train_features, train_labels_onehot} end),
       %{},
       epochs: 100,
       iterations: div(elem(Nx.shape(train_features), 0), 32)
     )
-  end
+end
 
   def evaluate(
         model,

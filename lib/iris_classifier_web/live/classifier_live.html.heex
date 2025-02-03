@@ -1,352 +1,267 @@
-<div class="mx-auto p-6">
-  <h1 class="text-3xl font-bold mb-6">Iris Flower Classification</h1>
-  
-<!-- Model Status Banner -->
+<div class="mx-auto max-w-7xl p-6 space-y-8">
+  <div class="text-center">
+    <h1 class="text-3xl font-bold mb-2">Iris Flower Classification</h1>
+    <p class="text-gray-600">A Neural Network Learning Journey</p>
+  </div>
+
+  <!-- Model Status Banner -->
   <%= if @model_state do %>
-    <div class="mb-4 p-3 bg-green-100 text-green-700 rounded flex items-center justify-between">
-      <span>Model is loaded and ready for predictions</span>
-      <button
-        phx-click="train_model"
-        class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-      >
+    <div class="p-4 bg-green-100 text-green-700 rounded-lg flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+        <span>Model Status: Trained and Ready</span>
+      </div>
+      <button phx-click="train_model" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
         Retrain Model
       </button>
     </div>
   <% else %>
-    <div class="mb-4 p-3 bg-yellow-100 text-yellow-700 rounded">
-      No trained model found. Please train a new model to make predictions.
+    <div class="p-4 bg-yellow-100 text-yellow-700 rounded-lg">
+      <div class="flex items-center space-x-2">
+        <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+        <span>Model Status: Not Trained</span>
+      </div>
     </div>
   <% end %>
-  
-<!-- Model Architecture Section -->
-  <div class="mb-8 p-6 bg-gray-50 rounded-lg">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold">Model Architecture</h2>
-      <button
-        phx-click="toggle_architecture"
-        class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-      >
-        {if @show_architecture, do: "Hide Details", else: "Show Details"}
-      </button>
+
+  <!-- Quick Stats Dashboard -->
+  <%= if @current_epoch > 0 do %>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-lg border shadow-sm">
+        <div class="text-sm text-gray-500">Current Epoch</div>
+        <div class="text-2xl font-bold"><%= @current_epoch %>/100</div>
+        <div class="text-xs text-gray-400">Training Progress</div>
+      </div>
+
+      <div class="bg-white p-4 rounded-lg border shadow-sm">
+        <div class="text-sm text-gray-500">Latest Accuracy</div>
+        <div class="text-2xl font-bold text-green-600">
+          <%= if length(@epochs_history) > 0 do %>
+            <%= "#{Float.round(hd(@epochs_history).accuracy * 100, 2)}%" %>
+          <% else %>
+            -
+          <% end %>
+        </div>
+        <div class="text-xs text-gray-400">Model Performance</div>
+      </div>
+
+      <div class="bg-white p-4 rounded-lg border shadow-sm">
+        <div class="text-sm text-gray-500">Latest Loss</div>
+        <div class="text-2xl font-bold text-blue-600">
+          <%= if length(@epochs_history) > 0 do %>
+            <%= Float.round(hd(@epochs_history).loss, 4) %>
+          <% else %>
+            -
+          <% end %>
+        </div>
+        <div class="text-xs text-gray-400">Training Error</div>
+      </div>
+
+      <div class="bg-white p-4 rounded-lg border shadow-sm">
+        <div class="text-sm text-gray-500">Training Status</div>
+        <div class="text-2xl font-bold text-purple-600"><%= @training_status %></div>
+        <div class="text-xs text-gray-400">Current State</div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Network Architecture -->
+  <div class="bg-white rounded-lg border shadow-sm">
+    <div class="p-4 border-b">
+      <h2 class="text-xl font-semibold">Neural Network Architecture</h2>
+      <p class="text-sm text-gray-600">Understanding the layers and connections</p>
     </div>
 
-    <%= if @show_architecture do %>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="p-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <!-- Input Layer -->
-        <div class="p-4 border rounded bg-white">
-          <h3 class="font-semibold mb-2">Input Layer</h3>
-          <ul class="text-sm list-disc list-inside space-y-1">
-            <li>4 input neurons</li>
-            <li>Sepal length</li>
-            <li>Sepal width</li>
-            <li>Petal length</li>
-            <li>Petal width</li>
-          </ul>
+        <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+          <h3 class="font-semibold text-blue-700 mb-2">Input Layer</h3>
+          <div class="space-y-2">
+            <div class="text-sm">4 Neurons</div>
+            <div class="text-xs text-gray-600">Features:</div>
+            <ul class="text-sm list-disc list-inside text-gray-700">
+              <li>Sepal Length</li>
+              <li>Sepal Width</li>
+              <li>Petal Length</li>
+              <li>Petal Width</li>
+            </ul>
+          </div>
         </div>
-        
-<!-- Hidden Layer 1 -->
-        <div class="p-4 border rounded bg-white">
-          <h3 class="font-semibold mb-2">Hidden Layer 1</h3>
-          <ul class="text-sm list-disc list-inside space-y-1">
-            <li>64 neurons</li>
-            <li>ReLU activation</li>
-            <li>20% dropout rate</li>
-            <li>256 trainable weights</li>
-            <li>64 bias parameters</li>
-          </ul>
+
+        <!-- Hidden Layer 1 -->
+        <div class="p-4 bg-purple-50 rounded-lg border border-purple-100">
+          <h3 class="font-semibold text-purple-700 mb-2">Hidden Layer 1</h3>
+          <div class="space-y-2">
+            <div class="text-sm">64 Neurons</div>
+            <div class="text-sm">ReLU Activation</div>
+            <div class="text-sm">20% Dropout</div>
+            <div class="text-xs text-gray-600">Handles initial feature processing</div>
+          </div>
         </div>
-        
-<!-- Hidden Layer 2 -->
-        <div class="p-4 border rounded bg-white">
-          <h3 class="font-semibold mb-2">Hidden Layer 2</h3>
-          <ul class="text-sm list-disc list-inside space-y-1">
-            <li>32 neurons</li>
-            <li>ReLU activation</li>
-            <li>2048 trainable weights</li>
-            <li>32 bias parameters</li>
-          </ul>
+
+        <!-- Hidden Layer 2 -->
+        <div class="p-4 bg-purple-50 rounded-lg border border-purple-100">
+          <h3 class="font-semibold text-purple-700 mb-2">Hidden Layer 2</h3>
+          <div class="space-y-2">
+            <div class="text-sm">32 Neurons</div>
+            <div class="text-sm">ReLU Activation</div>
+            <div class="text-xs text-gray-600">Refines learned features</div>
+          </div>
         </div>
-        
-<!-- Output Layer -->
-        <div class="p-4 border rounded bg-white col-span-full">
-          <h3 class="font-semibold mb-2">Output Layer</h3>
-          <ul class="text-sm list-disc list-inside space-y-1">
-            <li>3 neurons (one per class)</li>
-            <li>Softmax activation</li>
-            <li>96 trainable weights</li>
-            <li>3 bias parameters</li>
-            <li>Classes: Setosa, Versicolor, Virginica</li>
-          </ul>
-        </div>
-        
-<!-- Architecture Diagram -->
-        <div class="col-span-full mt-4">
-          <h3 class="font-semibold mb-2">Network Structure</h3>
-          <div class="bg-white p-4 rounded border overflow-x-auto">
-            <pre class="text-sm whitespace-pre">
-Input [4] → Dense [64] → ReLU → Dropout(0.2) → Dense [32] → ReLU → Dense [3] → Softmax
-            </pre>
+
+        <!-- Output Layer -->
+        <div class="p-4 bg-green-50 rounded-lg border border-green-100">
+          <h3 class="font-semibold text-green-700 mb-2">Output Layer</h3>
+          <div class="space-y-2">
+            <div class="text-sm">3 Neurons</div>
+            <div class="text-sm">Softmax Activation</div>
+            <div class="text-xs text-gray-600">Classes:</div>
+            <ul class="text-sm list-disc list-inside text-gray-700">
+              <li>Iris Setosa</li>
+              <li>Iris Versicolor</li>
+              <li>Iris Virginica</li>
+            </ul>
           </div>
         </div>
       </div>
-    <% end %>
+    </div>
   </div>
-  
-<!-- Training Section -->
-  <div class="mb-8 p-6 bg-gray-50 rounded-lg">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold">Model Training</h2>
-      <button
-        phx-click="toggle_training_log"
-        class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-      >
-        {if @show_training_log, do: "Hide Log", else: "Show Log"}
-      </button>
+
+  <!-- Training Progress -->
+  <div class="bg-white rounded-lg border shadow-sm">
+    <div class="p-4 border-b">
+      <h2 class="text-xl font-semibold">Training Progress</h2>
+      <p class="text-sm text-gray-600">Real-time learning metrics and history</p>
     </div>
 
-    <button
-      phx-click="train_model"
-      disabled={@training_status == "Training..."}
-      class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-    >
-      Train Model
-    </button>
-
-    <%= if @training_status do %>
-      <div class="mt-4">
-        <p class="font-semibold">Status: {@training_status}</p>
-      </div>
-    <% end %>
-
-    <%= if @error_message do %>
-      <div class="mt-4 p-4 bg-red-100 text-red-700 rounded">
-        {@error_message}
-      </div>
-    <% end %>
-
-    <%= if @show_training_log do %>
-      <div class="mt-4">
-        <h3 class="font-semibold mb-2">Training Log</h3>
-        <div class="bg-black text-green-400 p-4 rounded font-mono text-sm h-64 overflow-y-auto">
-          <%= for log <- @training_logs do %>
-            <div class="mb-1">{log}</div>
+    <div class="p-6">
+      <!-- Training Controls -->
+      <div class="mb-6">
+        <button 
+          phx-click="train_model"
+          disabled={@training_status == "Training..."}
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+          <%= if @training_status == "Training..." do %>
+            <span>Training in Progress...</span>
+          <% else %>
+            <span>Start Training</span>
           <% end %>
-        </div>
+        </button>
       </div>
-    <% end %>
 
-    <%= if length(@epochs_history) > 0 do %>
-      <div class="mt-4">
-        <h3 class="font-semibold mb-2">Training Progress</h3>
-        <div class="bg-white p-4 rounded border" style="height: 400px;">
-          # Replace the chart section in your template with this:
-
-<%= if length(@epochs_history) > 0 do %>
-  <div class="mt-4">
-    <h3 class="font-semibold mb-2">Training Progress</h3>
-    
-    <!-- Current Metrics Box -->
-    <div class="p-4 bg-white rounded border mb-4">
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <h4 class="font-semibold">Current Epoch: {@current_epoch}</h4>
-          <p>Accuracy: {Float.round(Enum.at(@epochs_history, 0).accuracy * 100, 2)}%</p>
-          <p>Loss: {Float.round(Enum.at(@epochs_history, 0).loss, 4)}</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Training History Table -->
-    <div class="bg-white rounded border overflow-hidden">
-      <table class="w-full">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="px-4 py-2 text-left">Epoch</th>
-            <th class="px-4 py-2 text-left">Accuracy</th>
-            <th class="px-4 py-2 text-left">Loss</th>
-            <th class="px-4 py-2 text-left">Accuracy Change</th>
-          </tr>
-        </thead>
-        <tbody>
-          <%= for {epoch_data, index} <- Enum.with_index(@epochs_history) do %>
-            <tr class="border-t">
-              <td class="px-4 py-2">{epoch_data.epoch}</td>
-              <td class="px-4 py-2">
-                <div class="flex items-center">
-                  <div class="w-24">
-                    {Float.round(epoch_data.accuracy * 100, 2)}%
-                  </div>
-                  <div class="flex-1 ml-2">
-                    <div class="bg-gray-200 h-2 rounded-full">
-                      <div class="bg-blue-500 h-2 rounded-full" style={"width: #{epoch_data.accuracy * 100}%"}></div>
+      <!-- Training History -->
+      <%= if length(@epochs_history) > 0 do %>
+        <div class="overflow-x-auto">
+          <table class="min-w-full">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Epoch</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Accuracy</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loss</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <%= for {epoch_data, index} <- Enum.take(@epochs_history, 10) |> Enum.with_index do %>
+                <tr class="hover:bg-gray-50">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <%= epoch_data.epoch %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <span class="text-sm text-gray-900 mr-2">
+                        <%= Float.round(epoch_data.accuracy * 100, 2) %>%
+                      </span>
+                      <div class="flex-1 h-2 w-32 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          class="h-full bg-green-500 transition-all duration-500" 
+                          style={"width: #{epoch_data.accuracy * 100}%"}>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </td>
-              <td class="px-4 py-2">{Float.round(epoch_data.loss, 4)}</td>
-              <td class="px-4 py-2">
-                <%= if index < length(@epochs_history) - 1 do %>
-                  <% prev_accuracy = Enum.at(@epochs_history, index + 1).accuracy %>
-                  <% change = (epoch_data.accuracy - prev_accuracy) * 100 %>
-                  <span class={if change >= 0, do: "text-green-600", else: "text-red-600"}>
-                    {if change >= 0, do: "+", else: ""}{Float.round(change, 2)}%
-                  </span>
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <%= Float.round(epoch_data.loss, 4) %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    <%= if index > 0 do %>
+                      <% prev_accuracy = Enum.at(@epochs_history, index - 1).accuracy %>
+                      <% change = (epoch_data.accuracy - prev_accuracy) * 100 %>
+                      <span class={"#{if change >= 0, do: "text-green-600", else: "text-red-600"}"}>
+                        <%= if change >= 0 do %>
+                          <span>↑</span>
+                        <% else %>
+                          <span>↓</span>
+                        <% end %>
+                        <%= Float.round(abs(change), 2) %>%
+                      </span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Training Log -->
+  <div class="bg-white rounded-lg border shadow-sm">
+    <div class="p-4 border-b">
+      <h2 class="text-xl font-semibold">Training Log</h2>
+      <p class="text-sm text-gray-600">Detailed training process and events</p>
     </div>
 
-    <!-- Simple Visual Progress -->
-    <div class="mt-4 p-4 bg-white rounded border">
-      <h4 class="font-semibold mb-2">Training Timeline</h4>
-      <div class="flex space-x-1">
-        <%= for epoch_data <- Enum.take(@epochs_history, 20) |> Enum.reverse() do %>
-          <div class="flex-1">
-            <div 
-              class="h-16 bg-blue-500 rounded-t" 
-              style={"height: #{epoch_data.accuracy * 100}%"}
-              title={"Epoch #{epoch_data.epoch}: #{Float.round(epoch_data.accuracy * 100, 1)}%"}
-            ></div>
-            <div 
-              class="h-16 bg-red-500" 
-              style={"height: #{epoch_data.loss * 50}px"}
-              title={"Loss: #{Float.round(epoch_data.loss, 3)}"}
-            ></div>
-          </div>
+    <div class="p-6">
+      <div class="bg-gray-900 text-green-400 rounded-lg p-4 font-mono text-sm h-64 overflow-y-auto">
+        <%= for log <- @training_logs do %>
+          <div class="mb-1 leading-relaxed"><%= log %></div>
         <% end %>
       </div>
-      <div class="flex justify-between mt-1 text-sm text-gray-500">
-        <span>Earlier Epochs</span>
-        <span>Recent Epochs</span>
-      </div>
     </div>
   </div>
-<% end %>
-        </div>
-        
-<!-- Current Epoch Metrics -->
-        <div class="mt-4 grid grid-cols-2 gap-4">
-          <div class="p-4 bg-white rounded border">
-            <h4 class="font-semibold mb-2">Current Epoch: {@current_epoch}</h4>
-            <p>Accuracy: {Float.round(Enum.at(@epochs_history, 0).accuracy * 100, 2)}%</p>
-            <p>Loss: {Float.round(Enum.at(@epochs_history, 0).loss, 4)}</p>
-          </div>
-        </div>
-      </div>
-    <% end %>
 
-    <%= if @evaluation_metrics do %>
-      <div class="mt-4">
-        <h3 class="font-semibold">Final Model Metrics:</h3>
-        <div class="mt-2 p-4 bg-white rounded border">
-          <p>
-            Accuracy: {get_in(@evaluation_metrics, [0, "accuracy"])
-            |> Nx.to_number()
-            |> Float.round(4)
-            |> Kernel.*(100)}%
-          </p>
-        </div>
-      </div>
-    <% end %>
-  </div>
-  
-<!-- Prediction Form -->
-  <div class="mb-8 p-6 bg-gray-50 rounded-lg">
-    <h2 class="text-xl font-semibold mb-4">Make Predictions</h2>
+  <!-- AI Concepts Explanation -->
+  <div class="bg-white rounded-lg border shadow-sm">
+    <div class="p-4 border-b">
+      <h2 class="text-xl font-semibold">Understanding the Process</h2>
+      <p class="text-sm text-gray-600">Key concepts in neural network training</p>
+    </div>
 
-    <form phx-submit="predict" class="space-y-4">
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium mb-1">Sepal Length:</label>
-          <input
-            type="number"
-            step="0.1"
-            name="sepal_length"
-            value={@sepal_length}
-            required
-            class="w-full p-2 border rounded"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium mb-1">Sepal Width:</label>
-          <input
-            type="number"
-            step="0.1"
-            name="sepal_width"
-            value={@sepal_width}
-            required
-            class="w-full p-2 border rounded"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium mb-1">Petal Length:</label>
-          <input
-            type="number"
-            step="0.1"
-            name="petal_length"
-            value={@petal_length}
-            required
-            class="w-full p-2 border rounded"
-          />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium mb-1">Petal Width:</label>
-          <input
-            type="number"
-            step="0.1"
-            name="petal_width"
-            value={@petal_width}
-            required
-            class="w-full p-2 border rounded"
-          />
-        </div>
-      </div>
-
-      <button
-        type="submit"
-        disabled={is_nil(@model_state)}
-        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
-      >
-        Predict
-      </button>
-    </form>
-  </div>
-  
-<!-- Prediction Results -->
-  <%= if @prediction do %>
-    <div class="p-6 bg-gray-50 rounded-lg">
-      <h2 class="text-xl font-semibold mb-4">Prediction Results</h2>
-
-      <div class="mb-4">
-        <p class="text-lg">
-          Predicted Class: <span class="font-semibold">{@prediction.class}</span>
+    <div class="p-6 space-y-4">
+      <div>
+        <h3 class="font-semibold text-lg mb-2">Epochs</h3>
+        <p class="text-sm text-gray-600">
+          An epoch represents one complete pass through the entire training dataset. 
+          Multiple epochs help the model learn patterns and improve accuracy over time.
         </p>
       </div>
 
       <div>
-        <h3 class="font-semibold mb-2">Class Probabilities:</h3>
-        <div class="space-y-2">
-          <%= for {class, probability} <- @prediction.probabilities do %>
-            <div class="flex items-center">
-              <div class="w-32">{class}:</div>
-              <div class="flex-1">
-                <div class="bg-gray-200 h-4 rounded overflow-hidden">
-                  <div class="bg-blue-500 h-full" style={"width: #{probability * 100}%"} />
-                </div>
-              </div>
-              <div class="ml-2 w-16 text-right">
-                {Float.round(probability * 100, 1)}%
-              </div>
-            </div>
-          <% end %>
-        </div>
+        <h3 class="font-semibold text-lg mb-2">Accuracy</h3>
+        <p class="text-sm text-gray-600">
+          Accuracy shows the percentage of correct predictions made by the model. 
+          Higher accuracy means better performance, but 100% accuracy might indicate overfitting.
+        </p>
+      </div>
+
+      <div>
+        <h3 class="font-semibold text-lg mb-2">Loss</h3>
+        <p class="text-sm text-gray-600">
+          Loss measures how far the model's predictions are from the actual values. 
+          Lower loss values indicate better model performance.
+        </p>
+      </div>
+
+      <div>
+        <h3 class="font-semibold text-lg mb-2">Activation Functions</h3>
+        <p class="text-sm text-gray-600">
+          ReLU (Rectified Linear Unit) helps the model learn non-linear patterns.
+          Softmax in the output layer converts raw predictions into probabilities.
+        </p>
       </div>
     </div>
-  <% end %>
+  </div>
 </div>
