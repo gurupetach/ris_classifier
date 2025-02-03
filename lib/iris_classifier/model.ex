@@ -29,46 +29,38 @@ defmodule IrisClassifier.Model do
     # Configure training parameters
     optimizer = Polaris.Optimizers.adam(learning_rate: 0.001)
 
-    # Train the model
-    model
-    |> Axon.Loop.trainer(:categorical_cross_entropy, optimizer)
-    |> Axon.Loop.metric(:accuracy)
-    |> Axon.Loop.handle(
-      :epoch_completed,
-      fn state, _epoch ->
-        accuracy = get_in(state.metrics, [0, "accuracy"]) |> Nx.to_number()
-        loss = get_in(state.metrics, [0, "loss"]) |> Nx.to_number()
+    # Add debug logging
+    IO.puts("Starting training loop...")
 
-        send(pid, {:training_log, "Epoch #{state.epoch} - Accuracy: #{Float.round(accuracy * 100, 2)}% Loss: #{Float.round(loss, 4)}"})
-        send(pid, {:training_metrics, state.epoch, %{
-          accuracy: accuracy,
-          loss: loss
-        }})
-        {:continue, state}
-      end
-    )
-    |> Axon.Loop.handle(
-      :batch_completed,
-      fn state, _batch ->
-        if rem(state.step, 10) == 0 do  # Only send every 10th batch to avoid overwhelming
-          accuracy = get_in(state.metrics, [0, "accuracy"]) |> Nx.to_number()
-          loss = get_in(state.metrics, [0, "loss"]) |> Nx.to_number()
+    trained_model_state =
+      model
+      |> Axon.Loop.trainer(:categorical_cross_entropy, optimizer)
+      |> Axon.Loop.metric(:accuracy)
+      |> Axon.Loop.handle(
+        :epoch_completed,
+        fn state, epoch ->
+          accuracy = get_in(state.metrics, [:all, "accuracy"]) |> Nx.to_number()
+          loss = get_in(state.metrics, [:all, "loss"]) |> Nx.to_number()
 
-          send(pid, {:batch_metrics, %{
-            batch: state.step,
+          IO.puts("Epoch #{epoch} - Accuracy: #{Float.round(accuracy * 100, 2)}% Loss: #{Float.round(loss, 4)}")
+
+          send(pid, {:training_log, "Epoch #{epoch} - Accuracy: #{Float.round(accuracy * 100, 2)}% Loss: #{Float.round(loss, 4)}"})
+          send(pid, {:training_metrics, epoch, %{
             accuracy: accuracy,
             loss: loss
           }})
+          {:continue, state}
         end
-        {:continue, state}
-      end
-    )
-    |> Axon.Loop.run(
-      Stream.repeatedly(fn -> {train_features, train_labels_onehot} end),
-      %{},
-      epochs: 100,
-      iterations: div(elem(Nx.shape(train_features), 0), 32)
-    )
+      )
+      |> Axon.Loop.run(
+        Stream.repeatedly(fn -> {train_features, train_labels_onehot} end),
+        %{},
+        epochs: 100,
+        iterations: div(elem(Nx.shape(train_features), 0), 32)
+      )
+
+    IO.puts("Training completed")
+    trained_model_state
 end
 
   def evaluate(
