@@ -139,13 +139,92 @@ Input [4] → Dense [64] → ReLU → Dropout(0.2) → Dense [32] → ReLU → D
       <div class="mt-4">
         <h3 class="font-semibold mb-2">Training Progress</h3>
         <div class="bg-white p-4 rounded border" style="height: 400px;">
-          <canvas
-            id="training-chart"
-            phx-hook="TrainingChart"
-            phx-update="ignore"
-            class="w-full h-full"
-          >
-          </canvas>
+          # Replace the chart section in your template with this:
+
+<%= if length(@epochs_history) > 0 do %>
+  <div class="mt-4">
+    <h3 class="font-semibold mb-2">Training Progress</h3>
+    
+    <!-- Current Metrics Box -->
+    <div class="p-4 bg-white rounded border mb-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <h4 class="font-semibold">Current Epoch: {@current_epoch}</h4>
+          <p>Accuracy: {Float.round(Enum.at(@epochs_history, 0).accuracy * 100, 2)}%</p>
+          <p>Loss: {Float.round(Enum.at(@epochs_history, 0).loss, 4)}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Training History Table -->
+    <div class="bg-white rounded border overflow-hidden">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-2 text-left">Epoch</th>
+            <th class="px-4 py-2 text-left">Accuracy</th>
+            <th class="px-4 py-2 text-left">Loss</th>
+            <th class="px-4 py-2 text-left">Accuracy Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          <%= for {epoch_data, index} <- Enum.with_index(@epochs_history) do %>
+            <tr class="border-t">
+              <td class="px-4 py-2">{epoch_data.epoch}</td>
+              <td class="px-4 py-2">
+                <div class="flex items-center">
+                  <div class="w-24">
+                    {Float.round(epoch_data.accuracy * 100, 2)}%
+                  </div>
+                  <div class="flex-1 ml-2">
+                    <div class="bg-gray-200 h-2 rounded-full">
+                      <div class="bg-blue-500 h-2 rounded-full" style={"width: #{epoch_data.accuracy * 100}%"}></div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-2">{Float.round(epoch_data.loss, 4)}</td>
+              <td class="px-4 py-2">
+                <%= if index < length(@epochs_history) - 1 do %>
+                  <% prev_accuracy = Enum.at(@epochs_history, index + 1).accuracy %>
+                  <% change = (epoch_data.accuracy - prev_accuracy) * 100 %>
+                  <span class={if change >= 0, do: "text-green-600", else: "text-red-600"}>
+                    {if change >= 0, do: "+", else: ""}{Float.round(change, 2)}%
+                  </span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Simple Visual Progress -->
+    <div class="mt-4 p-4 bg-white rounded border">
+      <h4 class="font-semibold mb-2">Training Timeline</h4>
+      <div class="flex space-x-1">
+        <%= for epoch_data <- Enum.take(@epochs_history, 20) |> Enum.reverse() do %>
+          <div class="flex-1">
+            <div 
+              class="h-16 bg-blue-500 rounded-t" 
+              style={"height: #{epoch_data.accuracy * 100}%"}
+              title={"Epoch #{epoch_data.epoch}: #{Float.round(epoch_data.accuracy * 100, 1)}%"}
+            ></div>
+            <div 
+              class="h-16 bg-red-500" 
+              style={"height: #{epoch_data.loss * 50}px"}
+              title={"Loss: #{Float.round(epoch_data.loss, 3)}"}
+            ></div>
+          </div>
+        <% end %>
+      </div>
+      <div class="flex justify-between mt-1 text-sm text-gray-500">
+        <span>Earlier Epochs</span>
+        <span>Recent Epochs</span>
+      </div>
+    </div>
+  </div>
+<% end %>
         </div>
         
 <!-- Current Epoch Metrics -->
